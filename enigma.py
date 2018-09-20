@@ -1,7 +1,12 @@
+from abc import ABC, abstractmethod
 import string
 import sys
 
-class Plugboard:
+class EnigmaComponent(ABC):
+    @abstractmethod
+    def process(self, letter): raise NotImplementedError
+
+class Plugboard(EnigmaComponent):
     def __init__(self):
         self.board1 = []
         self.board2 = []
@@ -25,7 +30,7 @@ class Plugboard:
     def __str__(self):
         return str([self.board1, self.board2])
 
-class Rotor:
+class Rotor(EnigmaComponent):
     def __init__(self, defPosition = 0, table = string.ascii_lowercase):
         if defPosition >= 26:
             raise Exception("Invalid Position")
@@ -52,18 +57,18 @@ class Rotor:
     def process(self, letter):
         return self.table[string.ascii_lowercase.index(letter)]
 
-class Reflector:
+class Reflector(EnigmaComponent):
     def process(self, letter):
         return string.ascii_lowercase[25-string.ascii_lowercase.index(letter)]
 
-class Machine:
-    def __init__(self):
-        self.rotors = [Rotor(25), Rotor(25), Rotor(25)]
+class Machine(EnigmaComponent):
+    def __init__(self, rotor1=0, rotor2=0, rotor3=0, plugs={}):
+        self.defaults = (rotor1, rotor2, rotor3, plugs)
+        self.rotors = [Rotor(rotor1), Rotor(rotor2), Rotor(rotor3)]
         self.reflector = Reflector()
         self.plugboard = Plugboard()
-        self.plugboard.plug_in('h', 'k')
-        self.plugboard.plug_in('o', 'm')
-        self.plugboard.plug_in('l', 'a')
+        for key,val in plugs.items():
+            self.plugboard.plug_in(key, val)
 
     def process(self, letter):
         if(self.rotors[2].advance()):
@@ -80,6 +85,13 @@ class Machine:
         letter = self.plugboard.process(letter)
         return letter
 
+    def reset(self):
+        r1,r2,r3,plugs = self.defaults
+        self.rotors = [Rotor(r1),Rotor(r2),Rotor(r3)]
+        self.plugboard = Plugboard()
+        for key,val in plugs.items():
+            self.plugboard.plug_in(key, val)
+
 if __name__ == '__main__':
   def process_string(machine, msg):
       msg = msg.lower()
@@ -89,7 +101,11 @@ if __name__ == '__main__':
               continue
           result = result + machine.process(letter)
       return result
-  msg = sys.argv[1] or "Hello, World"
-  processed = process_string(Machine(), msg)
-  doubleprocessed = process_string(Machine(), processed)
+  machine = Machine()
+  msg = "Hello, World"
+  if len(sys.argv) >= 2:
+      msg = sys.argv[1]
+  processed = process_string(machine, msg)
+  machine.reset()
+  doubleprocessed = process_string(machine, processed)
   print(msg,processed,doubleprocessed)
